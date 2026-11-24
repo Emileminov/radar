@@ -22,7 +22,13 @@
 
 ## Установка
 
-Нужны macOS 26 (Tahoe) и Apple Silicon, а также Xcode Command Line Tools (`xcode-select --install`).
+**[⬇ Скачать Радар (.dmg)](https://github.com/Emileminov/radar/releases/latest/download/Radar.dmg)** - подписано Developer ID и нотаризовано Apple. Открой .dmg и перетащи «Радар» в «Программы».
+
+Нужны macOS 26 (Tahoe) и Apple Silicon.
+
+### Сборка из исходников
+
+Нужны Xcode Command Line Tools (`xcode-select --install`).
 
 ```bash
 git clone https://github.com/Emileminov/radar.git
@@ -45,3 +51,4 @@ defaults write com.emil.radar davinciCache "/путь/к/CacheClip"
 ## Устройство
 
 Один файл `main.swift` (SwiftUI + AppKit), сборка `build.sh` без Xcode-проекта. Иконка рисуется скриптом `icon/make_icon.swift`.
+Релиз с подписью Developer ID и нотаризацией: `release/project.yml` (XcodeGen) и `release/ExportOptions.plist`, сборка через `xcodebuild archive` / `-exportArchive` / `-exportNotarizedApp`.
