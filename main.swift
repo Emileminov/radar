@@ -546,14 +546,15 @@ struct DockView: View {
     var onDrag: (Bool) -> Void = { _ in }
     static let minW: CGFloat = 440
     static var glassStyle: Int { let v = UserDefaults.standard.integer(forKey: "dockGlass"); return v == 0 ? 45 : v }
-    static func width(_ m: Model) -> CGFloat { max(m.rowW + 44, minW).rounded(.up) }
+    /// свёрнутая - ровно по содержимому (сколько дисков, столько и места); раскрытая - не уже, чем нужно подробностям
+    static func width(_ m: Model, open: Bool) -> CGFloat { (open ? max(m.rowW + 44, minW) : m.rowW + 44).rounded(.up) }
 
     var body: some View {
         // скругление как у Дока: около четверти его высоты
         let r = (m.dockH * 0.27).rounded()
         let shape = UnevenRoundedRectangle(topLeadingRadius: r, bottomLeadingRadius: r, bottomTrailingRadius: r, topTrailingRadius: r)
         let rowH = m.dockH
-        let w = Self.width(m)
+        let w = Self.width(m, open: m.expanded)
         let base = NotchView(m: m, barH: 0, onToggle: {}, onClean: onClean)
         VStack(spacing: 0) {
             base.details
@@ -801,10 +802,13 @@ final class App: NSObject, NSApplicationDelegate {
         return min(max(x, s.minX + 6), s.maxX - w - 6).rounded()
     }
     func setDockFrame(open: Bool) {
-        let w = DockView.width(model)
+        let wc = DockView.width(model, open: false)
+        let w = DockView.width(model, open: open)
         let h = (model.dockH + (open ? model.detailsH + 18 : 0)).rounded(.up)
-        let x = dragStart != nil ? panel.frame.minX : dockX(width: w)
-        let f = NSRect(x: x, y: screen.frame.minY + 4, width: w, height: h)
+        // раскрытая растёт влево: правый край остаётся на месте
+        let s = screen.frame
+        let x = dragStart != nil ? panel.frame.minX : max(s.minX + 6, dockX(width: wc) + wc - w)
+        let f = NSRect(x: x, y: s.minY + 4, width: w, height: h)
         if f != panel.frame { panel.setFrame(f, display: true) }
     }
     func dockDrag(_ ended: Bool) {
@@ -817,7 +821,9 @@ final class App: NSObject, NSApplicationDelegate {
         var f = panel.frame; f.origin.x = x
         panel.setFrame(f, display: true)
         if ended {
-            UserDefaults.standard.set(Double(x - s.minX), forKey: "dockX")
+            // запоминаем левый край свёрнутого вида (правый край общий для обоих видов)
+            let wc = DockView.width(model, open: false)
+            UserDefaults.standard.set(Double(x + w - wc - s.minX), forKey: "dockX")
             dragStart = nil
             lastToggle = Date()   // отпускание после перетаскивания не считаем щелчком
         }
@@ -1028,7 +1034,7 @@ if let i = CommandLine.arguments.firstIndex(of: "--snapshot-dock"), i + 1 < Comm
     MainActor.assumeIsolated {
         @MainActor func shot(_ name: String) {
             let v = DockView(m: m, plain: true, onToggle: {}, onClean: { _ in })
-                .frame(width: DockView.width(m), height: m.dockH + (m.expanded ? m.detailsH + 18 : 0)).padding(30)
+                .frame(width: DockView.width(m, open: m.expanded), height: m.dockH + (m.expanded ? m.detailsH + 18 : 0)).padding(30)
                 .background(Color(hex: 0x0E0F13)).environment(\.colorScheme, .dark)
             let r = ImageRenderer(content: v); r.scale = 2
             for _ in 0..<3 { _ = r.nsImage }
